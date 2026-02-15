@@ -34,6 +34,7 @@ export class MarkdownEmbedder {
                 continue;
             }
 
+            // If lock="true", skip updating this embed
             if (attributes['lock'] === 'true') {
                 continue;
             }
@@ -42,7 +43,6 @@ export class MarkdownEmbedder {
             const closeMatch = this.endEmbedRegex.exec(remainingText);
 
             let replaceRange: vscode.Range;
-
 
             // Determine if we are replacing an existing block or inserting a new one
             // Determine if we are replacing an existing block or inserting a new one

@@ -1,9 +1,10 @@
 {
   "name": "markdown-code-embedder",
-  "publisher": "my-extension-publisher",
+  "publisher": "giob22",
   "displayName": "Markdown Code Embedder",
   "description": "Embed code snippets from external files into Markdown documents.",
-  "version": "0.1.0",
+  "icon": "media/logo.png",
+  "version": "0.1.1",
   "engines": {
     "vscode": "^1.74.0"
   },

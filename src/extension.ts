@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
         }, async () => {
             const edits = await embedder.generateEdits(document);
             if (edits.length > 0) {
-                await editor.edit((editBuilder: vscode.TextEditorEdit) => {
+                await editor.edit(editBuilder => {
                     // Apply edits in reverse order (which sort in generateEdits should ensure, 
                     // but let's double check or just iterate carefully)
                     // VS Code edits handle simultaneous edits if ranges don't overlap.
@@ -40,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // Auto-update on save
-    const onWillSave = vscode.workspace.onWillSaveTextDocument((event: vscode.TextDocumentWillSaveEvent) => {
+    const onWillSave = vscode.workspace.onWillSaveTextDocument(event => {
         if (event.document.languageId === 'markdown') {
             console.log('Detected save on markdown file. Updating embeds...');
             event.waitUntil((async () => {

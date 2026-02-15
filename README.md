@@ -1,71 +1,92 @@
 # Markdown Code Embedder
 
-Embed code snippets from external files into Markdown documents and keep them in sync.
+Embed code snippets from external files into your Markdown documents and keep them automatically synchronized.
 
 ## Features
 
-- **Embed Code**: Use `<!-- embed:file="..." line="..." -->` to include code from other files.
-- **Region Support**: Use `<!-- embed:file="..." region="..." -->` to embed named regions from your code.
-- **Update**: Run the "Update Code Embeds" command to refresh all snippets.
-- **Auto-Formatting**: Automatically detects the language of the target file and applies the correct markdown code block syntax.
+- **Sync with Source**: Embed code directly from your project files. No more copy-pasting outdated code!
+- **Region Support**: Define named regions in your source code to embed specific logic blocks.
+- **Line Ranges**: Embed specific line ranges (e.g., `10-20`).
+- **Auto-Update**: Embeds updated automatically when you save the markdown file.
+- **Language Detection**: Automatically adds proper syntax highlighting based on the source file extension.
 
 ## Usage
 
-### 1. Basic Embedding (Line Numbers)
-
-Add a comment to your markdown file:
+### 1. Embed an Entire File
+Use the `embed:file` comment to embed the full content of a file. The path can be relative to the markdown file.
 
 ```markdown
-<!-- embed:file="./src/app.ts" line="10-20" -->
+<!-- embed:file="./src/main.ts" -->
 ```
 
-### 2. Region Embedding (Recommended)
+### 2. Embed a Specific Region (Recommended)
+Regions allow you to name blocks of code in your source files, making your embeds robust to code changes (like adding lines above the block).
 
-In your source code (e.g., `src/app.ts`), wrap the code you want to embed with `#region` and `#endregion`:
-
+**Step 1: Mark the region in your code**
 ```typescript
-// #region my-snippet
-function hello() {
-  console.log("Hello World");
+// #region my-feature
+function calculate() {
+    return 42;
 }
 // #endregion
 ```
 
-Then in your markdown:
-
+**Step 2: Refer to the region in your markdown**
 ```markdown
-<!-- embed:file="./src/app.ts" region="my-snippet" -->
+<!-- embed:file="./src/main.ts" region="my-feature" -->
 ```
 
-### 3. Update
-
-**Save the file**. The extension will automatically fetch the code and insert it.
-
-*Alternatively*, you can run the command `Update Code Embeds` from the Command Palette.
-
-The markdown file will be updated to:
+### 3. Embed by Line Numbers
+You can also specify a range of lines.
 
 ```markdown
-<!-- embed:file="./src/app.ts" region="my-snippet" -->
-```typescript
-function hello() {
-  console.log("Hello World");
-}
+<!-- embed:file="./src/main.ts" line="5-10" -->
 ```
+
+### 4. Lock an Embed
+Prevent an embed from updating by adding `lock="true"`. This is useful if you want to freeze a specific version of the code snippet.
+
+```markdown
+<!-- embed:file="./src/main.ts" lock="true" -->
+```
+
+## Snippets
+The extension includes snippets to make embedding easier. In any Markdown file, type:
+- `embed:file` → Embed a whole file
+- `embed:region` → Embed a named region
+- `embed:lines` → Embed specific lines
+Then press `Tab` to insert the template.
+
+## How It Works
+
+1. Add the embed comment to your markdown file (e.g., `<!-- embed:file="..." -->`).
+2. **Save the file**.
+3. The extension will fetch the content and insert a code block immediately after the comment, followed by a `<!-- embed:end -->` tag.
+
+Example result:
+```markdown
+<!-- embed:file="./example.js" -->
+
+` ` `javascript
+console.log("Hello");
+` ` `
+
 <!-- embed:end -->
 ```
 
-## Supported Languages for Regions
-Supports `#region` (C#, TS, JS), `// #region` (JS/TS family), `<!-- #region -->` (HTML/XML), and `/* #region */` (CSS/Java/C).
+## Commands
 
-## Requirements
+- **Update Code Embeds**: Manually triggers an update of all embeds in the current file. (Command ID: `markdown-embed.update`)
 
-- VS Code 1.74.0 or higher.
-
-## Extension Settings
-
-None.
+## Supported Region Markers
+The extension supports various comment styles for regions, accommodating most languages:
+- `// #region name` ... `// #endregion` (JS, TS, C#, Java, etc.)
+- `#region name` ... `#endregion` (Python, Shell, etc.)
+- `/* #region name */` ... `/* #endregion */` (CSS, C, etc.)
+- `<!-- #region name -->` ... `<!-- #endregion -->` (HTML, XML)
 
 ## Known Issues
-
 - Nested embeds are not supported.
+
+## License
+MIT
