@@ -1,5 +1,9 @@
 {
+<<<<<<< Updated upstream
   "name": "markdown-code-embedder",
+=======
+  "name": "giob22",
+>>>>>>> Stashed changes
   "publisher": "giob22",
   "displayName": "Markdown Code Embedder",
   "description": "Embed code snippets from external files into Markdown documents.",
