@@ -1,0 +1,23 @@
+{
+    "Embed File": {
+        "prefix": "embed:file",
+        "body": [
+            "<!-- embed:file=\"${1:./src/file.ts}\" -->"
+        ],
+        "description": "Embed content from an external file"
+    },
+    "Embed Region": {
+        "prefix": "embed:region",
+        "body": [
+            "<!-- embed:file=\"${1:./src/file.ts}\" region=\"${2:region-name}\" -->"
+        ],
+        "description": "Embed a specific named region from an external file"
+    },
+    "Embed Lines": {
+        "prefix": "embed:lines",
+        "body": [
+            "<!-- embed:file=\"${1:./src/file.ts}\" line=\"${2:1-10}\" -->"
+        ],
+        "description": "Embed specific lines from an external file"
+    }
+}
