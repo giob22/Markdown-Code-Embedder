@@ -34,10 +34,15 @@ export class MarkdownEmbedder {
                 continue;
             }
 
+            if (attributes['lock'] === 'true') {
+                continue;
+            }
+
             const remainingText = text.substring(matchIndex + matchLen);
             const closeMatch = this.endEmbedRegex.exec(remainingText);
 
             let replaceRange: vscode.Range;
+
 
             // Determine if we are replacing an existing block or inserting a new one
             // Determine if we are replacing an existing block or inserting a new one

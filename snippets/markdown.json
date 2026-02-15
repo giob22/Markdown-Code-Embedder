@@ -19,5 +19,12 @@
             "<!-- embed:file=\"${1:./src/file.ts}\" line=\"${2:1-10}\" -->"
         ],
         "description": "Embed specific lines from an external file"
+    },
+    "Embed with Lock": {
+        "prefix": "embed:lock",
+        "body": [
+            "<!-- embed:file=\"${1:./src/file.ts}\" lock=\"true\" -->"
+        ],
+        "description": "Embed content and lock it from updates"
     }
 }

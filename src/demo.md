@@ -24,10 +24,15 @@ const y = 20;
 console.log(x + y);
 ```
 <!-- embed:end -->
-
-
-
-
+## Lock Embed
+<!-- embed:file="./demo.ts" lock="true" -->
+```typescript
+// This content is locked and will not update even if demo.ts changes!
+function hello(name: string) {
+    console.log(`Hello, ${name}!`);
+}
+```
+<!-- embed:end -->
 
 
 
