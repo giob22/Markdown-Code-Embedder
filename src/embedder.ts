@@ -11,8 +11,6 @@ interface EmbedContent {
 }
 
 export class MarkdownEmbedder {
-    // Regex to match: <!-- embed:file="..." line="..." --> or region="..."
-    // We capture the entire comment content to parse attributes manually for flexibility
     private readonly embedRegex = /<!--\s*embed:([^\s]+)(.*?)-->/g;
     private readonly endEmbedRegex = /<!--\s*embed:end\s*-->/;
 
@@ -22,13 +20,12 @@ export class MarkdownEmbedder {
         const promises: Promise<void>[] = [];
 
         let match;
-        // We need to re-create regex to reset state if we were to re-use it, but here it's fine
         const regex = new RegExp(this.embedRegex);
 
         while ((match = regex.exec(text)) !== null) {
             const fullMatch = match[0];
-            const primaryKey = match[1]; // e.g. "file=..." (legacy handling if any) or just the first key
-            const remainingAttributes = match[2]; // The rest of the string
+            const primaryKey = match[1];
+            const remainingAttributes = match[2];
 
             const matchIndex = match.index;
             const matchLen = fullMatch.length;
@@ -51,14 +48,11 @@ export class MarkdownEmbedder {
 
             let replaceRange: vscode.Range;
 
-            // Determine if we are replacing an existing block or inserting a new one
-            // We must find the closing tag.
-            // Safety: Ensure no other embed starts before this closing tag to avoid eating subsequent embeds.
-            const nextStartRegex = new RegExp(this.embedRegex.source); // Remove 'g' flag behavior for simple search or just use regex
+            // Find the closing tag
+            const nextStartRegex = new RegExp(this.embedRegex.source);
             let nextStartMatch = nextStartRegex.exec(remainingText);
 
-            // SPECIAL CHECK: The embedRegex is broad and matches 'embed:end' too (as key='end').
-            // If the found 'start' tag is actually an 'end' tag, ignore it as a start candidate.
+            // Ignore if the start tag is actually an end tag
             if (nextStartMatch && this.endEmbedRegex.test(nextStartMatch[0])) {
                 nextStartMatch = null;
             }
@@ -98,8 +92,6 @@ export class MarkdownEmbedder {
 
                     const linkText = `[Source: ${attributes['file']}](${relativePath}${linkSuffix})`;
 
-                    // Construct new content
-                    // \n[Source: ...](...)\n```lang\ncontent\n```\n<!-- embed:end -->
                     const newContent = `\n${linkText}\n\`\`\`${lang}\n${embedResult.content}\n\`\`\`\n<!-- embed:end -->`;
 
                     const currentContent = document.getText(replaceRange);

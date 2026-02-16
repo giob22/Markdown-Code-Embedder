@@ -4,10 +4,22 @@
   "displayName": "Markdown Code Embedder",
   "description": "Embed code snippets from external files into Markdown documents.",
   "icon": "media/logo.png",
-  "version": "0.1.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/giob22/Markdown-Code-Embedder.git"
+  },
+  "version": "0.1.3",
   "engines": {
     "vscode": "^1.74.0"
   },
+  "keywords": [
+    "markdown",
+    "documentation",
+    "snippet",
+    "dynamic",
+    "embed",
+    "import code"
+  ],
   "categories": [
     "Other"
   ],

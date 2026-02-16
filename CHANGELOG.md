@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-02-16
+
+### Improved
+- **Documentation**: Enhanced `README.md` with:
+    - Feature demonstration GIFs.
+    - Marketing-focused introduction and "Why Markdown Code Embedder?" section.
+    - Marketplace and GitHub badges (Version, Installs, Rating, License, Stars, Made in Italy).
+    - Updated repository links to the new `Markdown-Code-Embedder` repo.
+
+### Fixed
+- Fixed broken repository URLs in `package.json` and `README.md`.
+- General bug fixes and stability improvements.
+
+## [0.1.2] - 2026-02-16
+
+### Improved
+- **Documentation**: Completely overhauled `README.md` with better feature descriptions and usage examples.
+- **Demo**: Enhanced `demo.md` with an interactive walkthrough structure.
+- **Metadata**: Added relevant keywords to `package.json` for better discoverability.
+
 ## [0.1.1] - 2026-02-15
 
 ### Fixed

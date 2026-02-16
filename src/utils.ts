@@ -29,14 +29,13 @@ export function getLanguageId(filePath: string): string {
 }
 
 export async function resolveFilePath(document: vscode.TextDocument, relPath: string): Promise<string> {
-    // 1. Try relative to the markdown file
     let targetPath = path.resolve(path.dirname(document.uri.fsPath), relPath);
 
     try {
         await fs.promises.access(targetPath);
         return targetPath;
     } catch {
-        // 2. Try relative to workspace root if available
+        // Try relative to workspace root
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
         if (workspaceFolder) {
             targetPath = path.resolve(workspaceFolder.uri.fsPath, relPath);

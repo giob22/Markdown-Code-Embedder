@@ -1,61 +1,69 @@
-# Markdown Code Embedder Demo
+# 🎮 Markdown Code Embedder Demo
 
-This file demonstrates the capabilities of the **Markdown Code Embedder** extension.
+Welcome to the **Markdown Code Embedder**! This file is your playground to test the extension's capabilities.
 
-> **Try it yourself!**
-> 1. Open this file in VS Code.
-> 2. Delete the code blocks between the comments (but keep the `<!-- embed:... -->` comments!).
-> 3. Save the file.
-> 4. Watch the code reappear automatically!
+## 🚀 How to Use This Demo
 
-## 1. Embedding a Region
-This embeds the `hello-world` region from [src/demo.ts](./src/demo.ts).
-Robust to changes in the file, as long as the region name stays the same.
+1. **Delete** the code blocks between the `<!-- embed:... -->` comments.
+2. **Save** this file (`Ctrl+S`).
+3. Watch the code reappear automatically! ✨
+
+---
+
+## 1. Embed a Region (The Best Way!)
+
+Regions are the most robust way to embed code. Even if line numbers change in the source, this embed will stay correct.
 
 <!-- embed:file="./src/demo.ts" region="hello-world" -->
-[Source: ./src/demo.ts](src/demo.ts#L18-L20)
+[Source: ./src/demo.ts](src/demo.ts#L3-L7)
 ```typescript
+// #region hello-world
 function hello(name: string) {
     console.log(`Hello, ${name}!`);
 }
-```
-<!-- embed:end -->
-
-## 2. Embedding Line Ranges
-This embeds lines 8-12 from [src/demo.ts](./src/demo.ts).
-Useful for quick snippets, but might break if lines shift in the source file.
-
-<!-- embed:file="./src/demo.ts" line="8-12" -->
-[Source: ./src/demo.ts](src/demo.ts#L8-L12)
-```typescript
-
-// #region second-region
-const x = 10;
-const y = 20;
-console.log(x + y);
-```
-<!-- embed:end -->
-
-## 3. Embedding a Whole File
-This embeds the entire [src/demo.ts](./src/demo.ts) file.
-
-<!-- embed:file="./src/demo.js" -->
-```typescript
-function hello(name: string) {
-    console.log(`Hello, ${name}!`);
-}
-
-// #region second-region
-const x = 10;
-const y = 20;
-console.log(x + y);
 // #endregion
 ```
 <!-- embed:end -->
 
-## 4. Locked Embed
-This embeds a specific version of lines 4-6 from [src/demo.ts](./src/demo.ts) using `lock="true"`.
-The content below will **not** update even if you modify the source file, effectively freezing this snippet in time.
+## 2. Embed a Specific Line Range
+
+Perfect for quick snippets where you just want lines 10-12.
+
+<!-- embed:file="./src/demo.ts" line="10-12" -->
+[Source: ./src/demo.ts](src/demo.ts#L10-L12)
+```typescript
+const x = 10;
+const y = 20;
+console.log(x + y + 50);
+```
+<!-- embed:end -->
+
+## 3. Embed an Entire File
+
+Need to show the whole file? Easy.
+
+<!-- embed:file="./src/demo.ts" -->
+[Source: ./src/demo.ts](src/demo.ts)
+```typescript
+// This is a demo file for testing embedding
+
+// #region hello-world
+function hello(name: string) {
+    console.log(`Hello, ${name}!`);
+}
+// #endregion
+
+// #region second-region
+const x = 10;
+const y = 20;
+console.log(x + y + 50);
+// #endregion
+```
+<!-- embed:end -->
+
+## 4. Locked Embed (Frozen in Time) ❄️
+
+This embed has `lock="true"`. Even if you change the source file, this block will **not** update. Great for historical records.
 
 <!-- embed:file="./src/demo.ts" line="4-6" lock="true" -->
 ```typescript

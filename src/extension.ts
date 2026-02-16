@@ -6,7 +6,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const embedder = new MarkdownEmbedder();
 
-    // Command to manually update
+
     let disposable = vscode.commands.registerCommand('markdown-embed.update', async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -23,10 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
             const edits = await embedder.generateEdits(document);
             if (edits.length > 0) {
                 await editor.edit(editBuilder => {
-                    // Apply edits in reverse order (which sort in generateEdits should ensure, 
-                    // but let's double check or just iterate carefully)
-                    // VS Code edits handle simultaneous edits if ranges don't overlap.
-                    // generateEdits should ideally return sorted edits. (We'll add sort there or here).
+                    // Apply edits in reverse order to avoid range conflicts
                     edits.sort((a, b) => b.range.start.compareTo(a.range.start));
                     for (const edit of edits) {
                         editBuilder.replace(edit.range, edit.newText);
@@ -39,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
     });
 
-    // Auto-update on save
+
     const onWillSave = vscode.workspace.onWillSaveTextDocument(event => {
         if (event.document.languageId === 'markdown') {
             console.log('Detected save on markdown file. Updating embeds...');
@@ -51,10 +48,9 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // Auto-update when source files change
+
     const onDidSaveSource = vscode.workspace.onDidSaveTextDocument(async (savedDoc) => {
-        // If the saved document is a Markdown file, onWillSave (above) already handled it 
-        // specific to that file. We skip it here to avoid redundancy and potential conflicts.
+        // Skip markdown files handled by onWillSave
         if (savedDoc.languageId === 'markdown') {
             return;
         }
@@ -96,8 +92,6 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(onWillSave);
     context.subscriptions.push(onDidSaveSource);
 
-    // Note: We removed the old snippet providers for now as the syntax changed.
-    // We can re-implement them for the new <!-- embed: --> syntax later if needed.
 }
 
 export function deactivate() { }
