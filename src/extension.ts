@@ -51,8 +51,50 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    // Auto-update when source files change
+    const onDidSaveSource = vscode.workspace.onDidSaveTextDocument(async (savedDoc) => {
+        // If the saved document is a Markdown file, onWillSave (above) already handled it 
+        // specific to that file. We skip it here to avoid redundancy and potential conflicts.
+        if (savedDoc.languageId === 'markdown') {
+            return;
+        }
+
+        const config = vscode.workspace.getConfiguration('markdownEmbedder');
+        if (!config.get<boolean>('autoUpdate')) {
+            return;
+        }
+
+        console.log(`File saved: ${savedDoc.fileName}. Checking for embeds in markdown files...`);
+
+        // Find all markdown files in the workspace
+        const mdFiles = await vscode.workspace.findFiles('**/*.md', '**/node_modules/**');
+
+        for (const mdFileUri of mdFiles) {
+            try {
+                const doc = await vscode.workspace.openTextDocument(mdFileUri);
+                const edits = await embedder.generateEdits(doc);
+
+                if (edits.length > 0) {
+                    console.log(`Updating embeds in ${mdFileUri.fsPath}...`);
+                    edits.sort((a, b) => b.range.start.compareTo(a.range.start));
+
+                    const workspaceEdit = new vscode.WorkspaceEdit();
+                    workspaceEdit.set(mdFileUri, edits);
+
+                    const applied = await vscode.workspace.applyEdit(workspaceEdit);
+                    if (applied) {
+                        await doc.save();
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to update embeds in ${mdFileUri.fsPath}:`, error);
+            }
+        }
+    });
+
     context.subscriptions.push(disposable);
     context.subscriptions.push(onWillSave);
+    context.subscriptions.push(onDidSaveSource);
 
     // Note: We removed the old snippet providers for now as the syntax changed.
     // We can re-implement them for the new <!-- embed: --> syntax later if needed.

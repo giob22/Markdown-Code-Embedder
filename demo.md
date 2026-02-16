@@ -13,6 +13,7 @@ This embeds the `hello-world` region from [src/demo.ts](./src/demo.ts).
 Robust to changes in the file, as long as the region name stays the same.
 
 <!-- embed:file="./src/demo.ts" region="hello-world" -->
+[Source: ./src/demo.ts](src/demo.ts#L18-L20)
 ```typescript
 function hello(name: string) {
     console.log(`Hello, ${name}!`);
@@ -25,6 +26,7 @@ This embeds lines 8-12 from [src/demo.ts](./src/demo.ts).
 Useful for quick snippets, but might break if lines shift in the source file.
 
 <!-- embed:file="./src/demo.ts" line="8-12" -->
+[Source: ./src/demo.ts](src/demo.ts#L8-L12)
 ```typescript
 
 // #region second-region
@@ -37,7 +39,7 @@ console.log(x + y);
 ## 3. Embedding a Whole File
 This embeds the entire [src/demo.ts](./src/demo.ts) file.
 
-<!-- embed:file="./src/demo.ts" -->
+<!-- embed:file="./src/demo.js" -->
 ```typescript
 function hello(name: string) {
     console.log(`Hello, ${name}!`);

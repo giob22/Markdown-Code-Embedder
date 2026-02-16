@@ -3,6 +3,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getLanguageId, resolveFilePath } from './utils';
 
+interface EmbedContent {
+    content: string;
+    resolvedPath: string;
+    startLine?: number;
+    endLine?: number;
+}
+
 export class MarkdownEmbedder {
     // Regex to match: <!-- embed:file="..." line="..." --> or region="..."
     // We capture the entire comment content to parse attributes manually for flexibility
@@ -45,7 +52,6 @@ export class MarkdownEmbedder {
             let replaceRange: vscode.Range;
 
             // Determine if we are replacing an existing block or inserting a new one
-            // Determine if we are replacing an existing block or inserting a new one
             // We must find the closing tag.
             // Safety: Ensure no other embed starts before this closing tag to avoid eating subsequent embeds.
             const nextStartRegex = new RegExp(this.embedRegex.source); // Remove 'g' flag behavior for simple search or just use regex
@@ -76,14 +82,30 @@ export class MarkdownEmbedder {
 
             promises.push((async () => {
                 try {
-                    const content = await this.resolveContent(document, attributes);
+                    const embedResult = await this.resolveContent(document, attributes);
                     const lang = getLanguageId(attributes['file']);
 
-                    // Construct new content
-                    // \n```lang\ncontent\n```\n<!-- embed:end -->
-                    const newContent = `\n\`\`\`${lang}\n${content}\n\`\`\`\n<!-- embed:end -->`;
+                    // Calculate relative path for the link
+                    const markdownDir = path.dirname(document.uri.fsPath);
+                    let relativePath = path.relative(markdownDir, embedResult.resolvedPath);
+                    // Ensure relative path uses forward slashes for Markdown compatibility
+                    relativePath = relativePath.split(path.sep).join('/');
 
-                    edits.push(vscode.TextEdit.replace(replaceRange, newContent));
+                    let linkSuffix = '';
+                    if (embedResult.startLine !== undefined && embedResult.endLine !== undefined) {
+                        linkSuffix = `#L${embedResult.startLine}-L${embedResult.endLine}`;
+                    }
+
+                    const linkText = `[Source: ${attributes['file']}](${relativePath}${linkSuffix})`;
+
+                    // Construct new content
+                    // \n[Source: ...](...)\n```lang\ncontent\n```\n<!-- embed:end -->
+                    const newContent = `\n${linkText}\n\`\`\`${lang}\n${embedResult.content}\n\`\`\`\n<!-- embed:end -->`;
+
+                    const currentContent = document.getText(replaceRange);
+                    if (currentContent !== newContent) {
+                        edits.push(vscode.TextEdit.replace(replaceRange, newContent));
+                    }
                 } catch (error: any) {
                     console.error(`Error embedding ${attributes['file']}: ${error.message}`);
                     // Optionally insert error message in markdown?
@@ -106,25 +128,39 @@ export class MarkdownEmbedder {
         return attrs;
     }
 
-    private async resolveContent(document: vscode.TextDocument, attrs: { [key: string]: string }): Promise<string> {
+    private async resolveContent(document: vscode.TextDocument, attrs: { [key: string]: string }): Promise<EmbedContent> {
         const filePath = await resolveFilePath(document, attrs['file']);
         const fileContent = await fs.promises.readFile(filePath, 'utf-8');
         const lines = fileContent.split(/\r?\n/);
+
+        let content = fileContent;
+        let startLine: number | undefined;
+        let endLine: number | undefined;
 
         if (attrs['line']) {
             const [start, end] = attrs['line'].split('-').map(n => parseInt(n, 10));
             if (isNaN(start) || isNaN(end)) {
                 throw new Error('Invalid line format');
             }
-            return lines.slice(start - 1, end).join('\n');
+            content = lines.slice(start - 1, end).join('\n');
+            startLine = start;
+            endLine = end;
         } else if (attrs['region']) {
-            return this.extractRegion(lines, attrs['region']);
+            const regionData = this.extractRegion(lines, attrs['region']);
+            content = regionData.content;
+            startLine = regionData.startLine;
+            endLine = regionData.endLine;
         }
 
-        return fileContent; // Default to whole file if no range specified
+        return {
+            content,
+            resolvedPath: filePath,
+            startLine,
+            endLine
+        };
     }
 
-    private extractRegion(lines: string[], regionName: string): string {
+    private extractRegion(lines: string[], regionName: string): { content: string, startLine: number, endLine: number } {
         const regionStartRegex = new RegExp(`^\\s*(?:\\/\\/|#|<!--|\\/\\*)\\s*#region\\s+${regionName}\\s*(?:-->|\\*\\/)?$`);
         const regionEndRegex = new RegExp(`^\\s*(?:\\/\\/|#|<!--|\\/\\*)\\s*#endregion\\s*(?:-->|\\*\\/)?`);
 
@@ -145,7 +181,11 @@ export class MarkdownEmbedder {
         }
 
         if (startLine !== -1 && endLine !== -1) {
-            return lines.slice(startLine, endLine).join('\n');
+            return {
+                content: lines.slice(startLine, endLine).join('\n'),
+                startLine: startLine + 1, // 1-based start line (inclusive)
+                endLine: endLine // 1-based end line (inclusive)
+            };
         }
 
         throw new Error(`Region ${regionName} not found`);

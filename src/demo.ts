@@ -9,5 +9,5 @@ function hello(name: string) {
 // #region second-region
 const x = 10;
 const y = 20;
-console.log(x + y);
+console.log(x + y + 50);
 // #endregion

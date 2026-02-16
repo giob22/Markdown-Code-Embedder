@@ -1,11 +1,10 @@
 {
   "name": "markdown-code-embedder",
-  "name": "giob22",
   "publisher": "giob22",
   "displayName": "Markdown Code Embedder",
   "description": "Embed code snippets from external files into Markdown documents.",
   "icon": "media/logo.png",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -13,6 +12,7 @@
     "Other"
   ],
   "activationEvents": [
+    "workspaceContains:**/*.md",
     "onLanguage:markdown",
     "onCommand:markdown-embed.update"
   ],
@@ -24,6 +24,16 @@
         "title": "Update Code Embeds"
       }
     ],
+    "configuration": {
+      "title": "Markdown Embedder",
+      "properties": {
+        "markdownEmbedder.autoUpdate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically update embeds in markdown files when a referenced source file is saved."
+        }
+      }
+    },
     "snippets": [
       {
         "language": "markdown",

@@ -7,8 +7,10 @@ Embed code snippets from external files into your Markdown documents and keep th
 - **Sync with Source**: Embed code directly from your project files. No more copy-pasting outdated code!
 - **Region Support**: Define named regions in your source code to embed specific logic blocks.
 - **Line Ranges**: Embed specific line ranges (e.g., `10-20`).
-- **Auto-Update**: Embeds updated automatically when you save the markdown file.
+- **Source Links**: Automatically adds a link to the source file and line range above the code block.
+- **Auto-Update**: Embeds updated automatically when you save the markdown file OR when you save the referenced source file.
 - **Language Detection**: Automatically adds proper syntax highlighting based on the source file extension.
+- **Configurable**: Enable or disable auto-updates via settings.
 
 ## Usage
 
@@ -67,6 +69,7 @@ Example result:
 ```markdown
 <!-- embed:file="./example.js" -->
 
+[Source: ./example.js](example.js)
 ` ` `javascript
 console.log("Hello");
 ` ` `
@@ -77,6 +80,21 @@ console.log("Hello");
 ## Commands
 
 - **Update Code Embeds**: Manually triggers an update of all embeds in the current file. (Command ID: `markdown-embed.update`)
+
+## Configuration
+
+You can configure the extension behavior in VS Code settings:
+
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `markdownEmbedder.autoUpdate` | `false` | Automatically update embeds in Markdown files when you save a referenced source file. |
+
+### How to Change Settings
+1. Go to **File > Preferences > Settings** (or press `Ctrl+,`).
+2. Search for `Markdown Embedder`.
+3. Toggle the **Auto Update** setting to enable/disable automatic updates on source file save.
 
 ## Supported Region Markers
 The extension supports various comment styles for regions, accommodating most languages:
