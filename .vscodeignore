@@ -15,3 +15,5 @@ verify_*.js
 verify_*.txt
 PUBLISHING.md
 demo.md
+manual_test*.js
+repro_*.js

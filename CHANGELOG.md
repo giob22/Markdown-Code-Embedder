@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-02-17
+### Added
+- **Line Highlighting**: Highlight specific lines in embedded code using `new="5-6,11"` attribute.
+- **Line Numbers**: Display original source line numbers with `withLineNumbers="true"`.
+- **Vertical Alignment**: Highlight comments (`// NEW`) are automatically aligned vertically for better readability.
+- **Comment Suffix Support**: Correctly handles comments in languages like HTML (`<!-- -->`) and CSS (`/* */`).
+- **Improved Error Handling**: Displays error messages directly in the markdown file when file resolution fails.
+- **Smart Indentation Stripping**: Automatically removes common indentation from embedded code chunks.
+- **Go to Definition**: `Ctrl+Click` on the file path in the embed comment opens the source file.
+
+### Removed
+- Diagnostics feature (removed upon request to simplify extension).
+
 ## [0.1.3] - 2026-02-16
 
 ### Improved

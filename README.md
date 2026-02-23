@@ -95,7 +95,30 @@ Useful for quick, temporary references.
 <!-- embed:file="./src/main.ts" line="5-10" -->
 ```
 
-### 4. Lock an Embed
+### 4. Highlight Specific Lines (NEW!)
+Highlight important changes or key lines in your embedded code using the `new` attribute. You can specify single lines or ranges.
+
+```markdown
+<!-- embed:file="./src/main.ts" region="my-feature" new="2,3-5" -->
+```
+
+This will automatically append `// NEW` (or language equivalent) to the specified lines and align them vertically.
+
+### 5. Show Line Numbers (NEW!)
+Prefix each line of code with its original line number from the source file using `withLineNumbers="true"`.
+
+```markdown
+<!-- embed:file="./src/main.ts" line="10-12" withLineNumbers="true" -->
+```
+
+Output:
+```typescript
+10: const x = 10;
+11: const y = 20;
+12: console.log(x + y);
+```
+
+### 6. Lock an Embed
 Prevent an embed from updating by adding `lock="true"`.
 
 ![Lock Mode](media/lock.gif)
@@ -104,12 +127,12 @@ Prevent an embed from updating by adding `lock="true"`.
 <!-- embed:file="./src/main.ts" lock="true" -->
 ```
 
-### 5. Automatic Updates (Auto-Sync)
+### 6. Automatic Updates (Auto-Sync)
 Enable `markdownEmbedder.autoUpdate` to have your markdown files automatically update whenever you save a referenced source file.
 
 ![Auto Update](media/Modifica_direttaModificaReadMe.gif)
 
-### 6. Manual Updates
+### 7. Manual Updates
 You can also trigger updates manually by running the command `Markdown Embedder: Update Code Embeds` or simply by editing and saving the markdown file itself.
 
 ![Manual Update](media/ModificaCodice_salvataggio_ModificaReadMe.gif)

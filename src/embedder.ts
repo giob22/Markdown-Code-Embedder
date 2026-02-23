@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getLanguageId, resolveFilePath } from './utils';
+import { getLanguageId, resolveFilePath, getCommentPrefix } from './utils';
 
 interface EmbedContent {
     content: string;
@@ -100,7 +100,11 @@ export class MarkdownEmbedder {
                     }
                 } catch (error: any) {
                     console.error(`Error embedding ${attributes['file']}: ${error.message}`);
-                    // Optionally insert error message in markdown?
+                    const errorContent = `\n<!-- Error embedding ${attributes['file']}: ${error.message} -->`;
+                    const currentContent = document.getText(replaceRange);
+                    if (currentContent !== errorContent) {
+                        edits.push(vscode.TextEdit.replace(replaceRange, errorContent));
+                    }
                 }
             })());
         }
@@ -144,6 +148,70 @@ export class MarkdownEmbedder {
             endLine = regionData.endLine;
         }
 
+        // Strip indentation first to ensure alignment is correct relative to visual content
+        content = this.stripIndentation(content);
+
+        // Handle 'new' attribute for line highlighting
+        if (attrs['new']) {
+            const newLines = new Set<number>();
+            attrs['new'].split(',').forEach(part => {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(n => parseInt(n.trim(), 10));
+                    if (!isNaN(start) && !isNaN(end)) {
+                        for (let i = start; i <= end; i++) {
+                            newLines.add(i);
+                        }
+                    }
+                } else {
+                    const line = parseInt(part.trim(), 10);
+                    if (!isNaN(line)) {
+                        newLines.add(line);
+                    }
+                }
+            });
+
+            const langId = getLanguageId(filePath);
+            const [commentPrefix, commentSuffix] = getCommentPrefix(langId);
+
+            const linesToProcess = content.split(/\r?\n/);
+
+            // Calculate max line length for alignment
+            let maxLineLength = 0;
+            linesToProcess.forEach(line => {
+                if (line.length > maxLineLength) {
+                    maxLineLength = line.length;
+                }
+            });
+
+            const processedLines = linesToProcess.map((line, index) => {
+                const originalLineNumber = (startLine || 1) + index;
+                if (newLines.has(originalLineNumber)) {
+                    // Calculate padding needed to align comments
+                    // We add a minimal padding of 1 space if line equals max length
+                    // Alignment position = maxLineLength + 1
+                    const padding = ' '.repeat(maxLineLength - line.length + 1);
+                    const suffix = `${padding}${commentPrefix} NEW${commentSuffix}`;
+                    return line + suffix;
+                }
+                return line;
+            });
+            content = processedLines.join('\n');
+        }
+
+        // Handle 'withLineNumbers' attribute
+        if (attrs['withLineNumbers'] === 'true') {
+            const linesToProcess = content.split(/\r?\n/);
+            const maxLineNumber = (startLine || 1) + linesToProcess.length - 1;
+            const maxLineNumberWidth = maxLineNumber.toString().length;
+
+            const processedLines = linesToProcess.map((line, index) => {
+                const originalLineNumber = (startLine || 1) + index;
+                const paddedLineNumber = originalLineNumber.toString().padStart(maxLineNumberWidth, ' ');
+                return `${paddedLineNumber}: ${line}`;
+            });
+            content = processedLines.join('\n');
+        }
+
         return {
             content,
             resolvedPath: filePath,
@@ -181,5 +249,27 @@ export class MarkdownEmbedder {
         }
 
         throw new Error(`Region ${regionName} not found`);
+    }
+
+    private stripIndentation(content: string): string {
+        const lines = content.split(/\r?\n/);
+
+        let minIndent = Infinity;
+        for (const line of lines) {
+            if (line.trim().length === 0) continue;
+            const match = line.match(/^(\s*)/);
+            if (match) {
+                minIndent = Math.min(minIndent, match[1].length);
+            }
+        }
+
+        if (minIndent === Infinity || minIndent === 0) {
+            return content;
+        }
+
+        return lines.map(line => {
+            if (line.length < minIndent) return '';
+            return line.substring(minIndent);
+        }).join('\n');
     }
 }

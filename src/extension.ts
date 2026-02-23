@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { MarkdownEmbedder } from './embedder';
+import { EmbedDefinitionProvider } from './providers';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Markdown Code Embedder is now active!');
@@ -87,6 +88,11 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
     });
+
+    const definitionProvider = new EmbedDefinitionProvider();
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider('markdown', definitionProvider));
+
+    // Update diagnostics on save and change
 
     context.subscriptions.push(disposable);
     context.subscriptions.push(onWillSave);

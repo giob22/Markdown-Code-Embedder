@@ -15,7 +15,7 @@ Welcome to the **Markdown Code Embedder**! This file is your playground to test 
 Regions are the most robust way to embed code. Even if line numbers change in the source, this embed will stay correct.
 
 <!-- embed:file="./src/demo.ts" region="hello-world" new="4-5" -->
-[Source: ./src/demo.ts](src/demo.ts#L4-L6)
+[Source: ./src/demo.ts](demo.ts#L4-L6)
 ```typescript
 function hello(name: string) {
     console.log(`Hello, ${name}!`);
@@ -26,7 +26,7 @@ function hello(name: string) {
 You can also combine ranges and single lines!
 
 <!-- embed:file="./src/demo.ts" new="5-6,11" -->
-[Source: ./src/demo.ts](src/demo.ts)
+[Source: ./src/demo.ts](demo.ts)
 ```typescript
 // This is a demo file for testing embedding
 
@@ -50,7 +50,7 @@ console.log(x + y + 50);
 Perfect for quick snippets where you just want lines 10-12.
 
 <!-- embed:file="./src/demo.ts" line="10-12" -->
-[Source: ./src/demo.ts](src/demo.ts#L10-L12)
+[Source: ./src/demo.ts](demo.ts#L10-L12)
 ```typescript
 const x = 10;
 const y = 20;
@@ -63,7 +63,7 @@ console.log(x + y + 50);
 Need to show the whole file? Easy.
 
 <!-- embed:file="./src/demo.ts" -->
-[Source: ./src/demo.ts](src/demo.ts)
+[Source: ./src/demo.ts](demo.ts)
 ```typescript
 // This is a demo file for testing embedding
 
@@ -86,8 +86,8 @@ console.log(x + y + 50);
 
 Want to draw attention to specific lines? Use the `new` attribute!
 
-<!-- embed:file="./src/demo.ts" new="5-6,11"-->
-[Source: ./src/demo.ts](src/demo.ts)
+<!-- embed:file="demo.ts" new="5,11"-->
+[Source: demo.ts](demo.ts)
 ```typescript
 // This is a demo file for testing embedding
 
@@ -117,16 +117,12 @@ console.log("I will not change even if source does.");
 ```
 <!-- embed:end -->
 
-## 6. Embed with Line Numbers 🔢
-
-Want to show original line numbers? Use `withLineNumbers="true"`.
-
-<!-- embed:file="./src/demo.ts" line="4-6" withLineNumbers="true" -->
-[Source: ./src/demo.ts](src/demo.ts#L4-L6)
+<!-- embed:file="./src/demo.ts" line="4-6" new="4-6" -->
+[Source: ./src/demo.ts](demo.ts#L4-L6)
 ```typescript
-4: function hello(name: string) {
-5:     console.log(`Hello, ${name}!`);
-6: }
+function hello(name: string) {
+    console.log(`Hello, ${name}!`);
+}
 ```
 <!-- embed:end -->
 

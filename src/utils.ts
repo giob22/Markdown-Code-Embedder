@@ -28,6 +28,33 @@ export function getLanguageId(filePath: string): string {
     return map[ext] || '';
 }
 
+
+export function getCommentPrefix(languageId: string): [string, string] {
+    const formats: { [key: string]: [string, string] } = {
+        'javascript': ['//', ''],
+        'typescript': ['//', ''],
+        'c': ['//', ''],
+        'cpp': ['//', ''],
+        'csharp': ['//', ''],
+        'java': ['//', ''],
+        'go': ['//', ''],
+        'rust': ['//', ''],
+        'php': ['//', ''],
+        'python': ['#', ''],
+        'ruby': ['#', ''],
+        'perl': ['#', ''],
+        'yaml': ['#', ''],
+        'shellscript': ['#', ''],
+        'bash': ['#', ''],
+        'html': ['<!--', ' -->'],
+        'xml': ['<!--', ' -->'],
+        'css': ['/*', ' */'],
+        'sql': ['--', ''],
+        'lua': ['--', '']
+    };
+    return formats[languageId] || ['//', ''];
+}
+
 export async function resolveFilePath(document: vscode.TextDocument, relPath: string): Promise<string> {
     let targetPath = path.resolve(path.dirname(document.uri.fsPath), relPath);
 
