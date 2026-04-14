@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-04-15
+
+### Added
+- **Lua support**: Region markers using `--` comments are now recognized (`-- #region name` / `-- #endregion`). Lua files (`.lua`) also get correct syntax highlighting in embedded code blocks.
+
+## [0.1.5] - 2026-04-15
+
+### Added
+- **Diagnostics**: Inline error highlighting (red squiggles) when a referenced file is not found, a named region is missing, or a line range is invalid or out of bounds.
+- **CodeLens**: Inline action buttons appear above every embed tag — `↻ Update` to refresh a single embed, `→ file#region` to jump directly to the source, and `🔒 Lock` / `🔓 Unlock` to toggle update protection without editing the tag manually.
+- **Hover Preview**: Hover over any embed comment to instantly preview the embedded code in a popup — no need to open the source file.
+- **Autocomplete**: IntelliSense for `file="..."` (file path completions relative to the markdown file) and `region="..."` (auto-lists all `#region` names defined in the referenced file).
+
+### Changed
+- Marketplace categories updated to `Programming Languages` and `Notebooks` for better discoverability.
+- Added keywords: `include`, `inject`, `sync`, `literate`, `code docs`, `code snippets`, `live docs`.
+
 ## [0.1.4] - 2026-02-17
 ### Added
 - **Line Highlighting**: Highlight specific lines in embedded code using `new="5-6,11"` attribute.
@@ -47,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial public release.
-- **Core Embedding**: Support for embedding code via `<!-- embed:file="..." -->` comments.
+- **Core Embedding**: Support for embedding code via embed comment tags in markdown files.
 - **Region Support**: Target specific code blocks using `region="..."` attribute and `#region` markers in source files.
 - **Line Ranges**: Target specific lines using `line="start-end"` attribute.
 - **Auto-Update**: Embeds automatically refresh/sync when the markdown document is saved.

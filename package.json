@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/giob22/Markdown-Code-Embedder.git"
   },
-  "version": "0.1.4",
+  "version": "0.1.6",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -18,9 +18,18 @@
     "snippet",
     "dynamic",
     "embed",
-    "import code"
+    "import code",
+    "include",
+    "inject",
+    "sync",
+    "literate",
+    "code docs",
+    "code snippets",
+    "live docs"
   ],
   "categories": [
+    "Programming Languages",
+    "Notebooks",
     "Other"
   ],
   "activationEvents": [
@@ -34,6 +43,22 @@
       {
         "command": "markdown-embed.update",
         "title": "Update Code Embeds"
+      },
+      {
+        "command": "markdown-embed.updateSingle",
+        "title": "Update Single Code Embed"
+      },
+      {
+        "command": "markdown-embed.goToSource",
+        "title": "Go to Embed Source File"
+      },
+      {
+        "command": "markdown-embed.lock",
+        "title": "Lock Code Embed"
+      },
+      {
+        "command": "markdown-embed.unlock",
+        "title": "Unlock Code Embed"
       }
     ],
     "configuration": {

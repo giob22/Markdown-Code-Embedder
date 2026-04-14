@@ -63,7 +63,7 @@ export class EmbedDefinitionProvider implements vscode.DefinitionProvider {
                         try {
                             const content = await fs.promises.readFile(resolvedPath, 'utf-8');
                             const lines = content.split(/\r?\n/);
-                            const regionStartRegex = new RegExp(`^\\s*(?:\\/\\/|#|<!--|\\/\\*)\\s*#region\\s+${regionName}\\s*(?:-->|\\*\\/)?$`);
+                            const regionStartRegex = new RegExp(`^\\s*(?:\\/\\/|--|#|<!--|\\/\\*)\\s*#region\\s+${regionName}\\s*(?:-->|\\*\\/)?$`);
                             for (let i = 0; i < lines.length; i++) {
                                 if (regionStartRegex.test(lines[i])) {
                                     selectionRange = new vscode.Range(i, 0, i, lines[i].length);

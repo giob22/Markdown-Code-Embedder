@@ -23,7 +23,8 @@ export function getLanguageId(filePath: string): string {
         '.go': 'go',
         '.rs': 'rust',
         '.php': 'php',
-        '.rb': 'ruby'
+        '.rb': 'ruby',
+        '.lua': 'lua'
     };
     return map[ext] || '';
 }

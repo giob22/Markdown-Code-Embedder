@@ -14,7 +14,19 @@ export class MarkdownEmbedder {
     private readonly embedRegex = /<!--\s*embed:([^\s]+)(.*?)-->/g;
     private readonly endEmbedRegex = /<!--\s*embed:end\s*-->/;
 
-    public async generateEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+    public async generateEditsForIndex(document: vscode.TextDocument, targetIndex: number): Promise<vscode.TextEdit[]> {
+        const text = document.getText();
+        const regex = new RegExp(this.embedRegex.source, 'g');
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            if (match.index === targetIndex) {
+                return this.generateEdits(document, targetIndex);
+            }
+        }
+        return [];
+    }
+
+    public async generateEdits(document: vscode.TextDocument, onlyIndex?: number): Promise<vscode.TextEdit[]> {
         const text = document.getText();
         const edits: vscode.TextEdit[] = [];
         const promises: Promise<void>[] = [];
@@ -29,6 +41,11 @@ export class MarkdownEmbedder {
 
             const matchIndex = match.index;
             const matchLen = fullMatch.length;
+
+            // If targeting a specific embed, skip all others
+            if (onlyIndex !== undefined && matchIndex !== onlyIndex) {
+                continue;
+            }
 
             // Combine attributes for parsing
             const attributeString = primaryKey + remainingAttributes;
@@ -99,17 +116,31 @@ export class MarkdownEmbedder {
                         edits.push(vscode.TextEdit.replace(replaceRange, newContent));
                     }
                 } catch (error: any) {
+                    // Do not write errors into the document — diagnostics provider
+                    // surfaces them as squiggly lines + Problems panel entries.
                     console.error(`Error embedding ${attributes['file']}: ${error.message}`);
-                    const errorContent = `\n<!-- Error embedding ${attributes['file']}: ${error.message} -->`;
-                    const currentContent = document.getText(replaceRange);
-                    if (currentContent !== errorContent) {
-                        edits.push(vscode.TextEdit.replace(replaceRange, errorContent));
-                    }
                 }
             })());
         }
 
         await Promise.all(promises);
+        return edits;
+    }
+
+    /**
+     * Removes any legacy `<!-- Error embedding ... -->` comments written by older versions.
+     * Returns TextEdits that delete them so the document stays clean.
+     */
+    public cleanLegacyErrorComments(document: vscode.TextDocument): vscode.TextEdit[] {
+        const text = document.getText();
+        const edits: vscode.TextEdit[] = [];
+        const errorRegex = /\n?<!--\s*Error embedding [^>]+-->/g;
+        let match;
+        while ((match = errorRegex.exec(text)) !== null) {
+            const start = document.positionAt(match.index);
+            const end = document.positionAt(match.index + match[0].length);
+            edits.push(vscode.TextEdit.delete(new vscode.Range(start, end)));
+        }
         return edits;
     }
 
@@ -221,8 +252,8 @@ export class MarkdownEmbedder {
     }
 
     private extractRegion(lines: string[], regionName: string): { content: string, startLine: number, endLine: number } {
-        const regionStartRegex = new RegExp(`^\\s*(?:\\/\\/|#|<!--|\\/\\*)\\s*#region\\s+${regionName}\\s*(?:-->|\\*\\/)?$`);
-        const regionEndRegex = new RegExp(`^\\s*(?:\\/\\/|#|<!--|\\/\\*)\\s*#endregion\\s*(?:-->|\\*\\/)?`);
+        const regionStartRegex = new RegExp(`^\\s*(?:\\/\\/|--|#|<!--|\\/\\*)\\s*#region\\s+${regionName}\\s*(?:-->|\\*\\/)?$`);
+        const regionEndRegex = new RegExp(`^\\s*(?:\\/\\/|--|#|<!--|\\/\\*)\\s*#endregion\\s*(?:-->|\\*\\/)?`);
 
         // Also support just #endregion without name or strict matching if preferred, but strict is safer for named regions
 

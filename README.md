@@ -44,17 +44,24 @@ When your code changes, your documentation updates automatically. It's like magi
 - ⚡ **Zero Maintenance**: Never worry about outdated examples again.
 - 🎯 **Precision & Control**: Embed entire files, specific regions, or exact line ranges.
 - 🔒 **Lock Mode**: Need a static snapshot? Lock specific embeds to prevent updates.
+- 🔴 **Instant Feedback**: Errors surface right in the editor — no surprises at save time.
 
 ---
 
 ## ✨ Features
 
 - **Dynamic Embedding**: Reference code from any file in your workspace seamlessly.
-- **Smart Region Support**: Define named regions (`#region ... #endregion`) in your source code. This is the **most robust** way to embed snippets as they survive refactoring and line shifts.
-- **Line Range Support**: Quickly grab lines 10-20 for a fast example.
+- **Smart Region Support**: Define named regions (`#region ... #endregion`) in your source code — the **most robust** way to embed snippets as they survive refactoring and line shifts.
+- **Line Range Support**: Quickly grab lines 10–20 for a fast example.
 - **Auto-Sync**: Enable `autoUpdate` to have your docs refresh the moment you save your source file.
-- **Source Links**: Automatically generates clickable links to the source file and line numbers for easy navigation.
-- **Intelligent Syntax Highlighting**: Detects the source language and applies the correct markdown code fence for you.
+- **Source Links**: Automatically generates clickable links to the source file and line numbers.
+- **Intelligent Syntax Highlighting**: Detects the source language and applies the correct markdown code fence.
+- **Diagnostics**: Red squiggles appear instantly when a referenced file is missing or a region can't be found.
+- **CodeLens**: Inline action buttons above every embed — update, navigate, lock/unlock without touching the tag.
+- **Hover Preview**: Hover over an embed tag to preview the code without opening the source file.
+- **Autocomplete**: IntelliSense for file paths and region names while writing embed tags.
+
+---
 
 ## 🚀 Usage
 
@@ -95,17 +102,17 @@ Useful for quick, temporary references.
 <!-- embed:file="./src/main.ts" line="5-10" -->
 ```
 
-### 4. Highlight Specific Lines (NEW!)
-Highlight important changes or key lines in your embedded code using the `new` attribute. You can specify single lines or ranges.
+### 4. Highlight Specific Lines
+Mark important changes using the `new` attribute. Supports single lines and ranges.
 
 ```markdown
 <!-- embed:file="./src/main.ts" region="my-feature" new="2,3-5" -->
 ```
 
-This will automatically append `// NEW` (or language equivalent) to the specified lines and align them vertically.
+Appends `// NEW` (or language-equivalent comment) to the specified lines, vertically aligned.
 
-### 5. Show Line Numbers (NEW!)
-Prefix each line of code with its original line number from the source file using `withLineNumbers="true"`.
+### 5. Show Line Numbers
+Prefix each line with its original line number from the source file.
 
 ```markdown
 <!-- embed:file="./src/main.ts" line="10-12" withLineNumbers="true" -->
@@ -127,36 +134,70 @@ Prevent an embed from updating by adding `lock="true"`.
 <!-- embed:file="./src/main.ts" lock="true" -->
 ```
 
-### 6. Automatic Updates (Auto-Sync)
+### 7. Automatic Updates (Auto-Sync)
 Enable `markdownEmbedder.autoUpdate` to have your markdown files automatically update whenever you save a referenced source file.
 
 ![Auto Update](media/Modifica_direttaModificaReadMe.gif)
 
-### 7. Manual Updates
-You can also trigger updates manually by running the command `Markdown Embedder: Update Code Embeds` or simply by editing and saving the markdown file itself.
+### 8. Manual Updates
+Run the command `Markdown Embedder: Update Code Embeds` or simply save the markdown file.
 
 ![Manual Update](media/ModificaCodice_salvataggio_ModificaReadMe.gif)
 
-## ⚙️ Configuration
+---
 
-You can customize the extension in your VS Code settings (`Ctrl+,`):
+## 🧠 Smart Editor Features
+
+### Diagnostics
+The extension highlights problems directly in the editor as you type:
+
+| Problem | Severity |
+| :--- | :--- |
+| Referenced file not found | Error |
+| Named region not found in file | Error |
+| Invalid line range format | Warning |
+| Line range exceeds file length | Warning |
+
+### CodeLens
+Every embed tag shows inline action buttons:
+
+- **↻ Update** — refresh this single embed without running the full update command
+- **→ file#region** — jump directly to the source file (and region, if specified)
+- **🔒 Lock / 🔓 Unlock** — toggle update protection with one click
+
+### Hover Preview
+Hover over any `<!-- embed:... -->` tag to see a popup preview of the embedded code. Useful for quickly checking what will be inserted without opening the source file.
+
+### Autocomplete
+IntelliSense activates automatically inside embed tags:
+
+- **`file="..."`** — suggests files and folders relative to the current markdown file
+- **`region="..."`** — lists all `#region` names found in the referenced source file
+
+---
+
+## ⚙️ Configuration
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `markdownEmbedder.autoUpdate` | `false` | Automatically update embeds in Markdown files when a referenced source file is saved. |
+| `markdownEmbedder.autoUpdate` | `false` | Automatically update embeds when a referenced source file is saved. |
 
 ## ⌨️ Commands
 
-- `Markdown Embedder: Update Code Embeds` (ID: `markdown-embed.update`): Manually triggers an update of all embeds in the current file.
+| Command | Description |
+| :--- | :--- |
+| `Markdown Embedder: Update Code Embeds` | Update all embeds in the current markdown file. |
 
 ## 📝 Supported Region Markers
 
-The extension supports various comment styles for regions, accommodating most languages:
+The extension supports various comment styles, accommodating most languages:
 
 - `// #region name` ... `// #endregion` (JS, TS, C#, Java, etc.)
 - `#region name` ... `#endregion` (Python, Shell, etc.)
 - `/* #region name */` ... `/* #endregion */` (CSS, C, etc.)
 - `<!-- #region name -->` ... `<!-- #endregion -->` (HTML, XML)
+
+---
 
 ## 🤝 Contributing
 
