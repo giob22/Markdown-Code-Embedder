@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveFilePath, getLanguageId } from './utils';
+import { resolveFilePath, getLanguageId, isUrl, fetchUrl } from './utils';
 
 const ATTR_REGEX = /([a-zA-Z0-9-_]+)=["']([^"']+)["']/g;
 const REGION_START_REGEX = (name: string) =>
@@ -31,16 +31,33 @@ export class EmbedHoverProvider implements vscode.HoverProvider {
             return undefined;
         }
 
-        let resolvedPath: string;
-        try {
-            resolvedPath = await resolveFilePath(document, attrs['file']);
-        } catch {
-            const md = new vscode.MarkdownString(`**Embed Error:** File not found: \`${attrs['file']}\``);
-            return new vscode.Hover(md, range);
+        let fileContent: string = '';
+        let resolvedPath: string = '';
+
+        if (isUrl(attrs['file'])) {
+            resolvedPath = attrs['file'];
+            try {
+                fileContent = await fetchUrl(attrs['file']);
+            } catch (e: any) {
+                const md = new vscode.MarkdownString(`**Embed Error:** ${e.message}`);
+                return new vscode.Hover(md, range);
+            }
+        } else {
+            try {
+                resolvedPath = await resolveFilePath(document, attrs['file']);
+            } catch {
+                const md = new vscode.MarkdownString(`**Embed Error:** File not found: \`${attrs['file']}\``);
+                return new vscode.Hover(md, range);
+            }
+            try {
+                fileContent = await fs.promises.readFile(resolvedPath, 'utf-8');
+            } catch (error: any) {
+                const md = new vscode.MarkdownString(`**Embed Error:** ${error.message}`);
+                return new vscode.Hover(md, range);
+            }
         }
 
         try {
-            const fileContent = await fs.promises.readFile(resolvedPath, 'utf-8');
             const lines = fileContent.split(/\r?\n/);
             const lang = getLanguageId(attrs['file']);
 
@@ -87,8 +104,9 @@ export class EmbedHoverProvider implements vscode.HoverProvider {
             // Strip common indentation
             previewContent = stripIndentation(previewContent);
 
-            const relPath = path.relative(path.dirname(document.uri.fsPath), resolvedPath)
-                .split(path.sep).join('/');
+            const relPath = isUrl(attrs['file'])
+                ? attrs['file']
+                : path.relative(path.dirname(document.uri.fsPath), resolvedPath).split(path.sep).join('/');
 
             const md = new vscode.MarkdownString();
             md.isTrusted = true;

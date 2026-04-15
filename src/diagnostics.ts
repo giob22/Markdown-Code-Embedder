@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveFilePath } from './utils';
+import { resolveFilePath, isUrl, getCodeFenceRanges, isInCodeFence } from './utils';
 
 const EMBED_REGEX = /<!--\s*embed:([^\s]+)(.*?)-->/g;
 const ATTR_REGEX = /([a-zA-Z0-9-_]+)=["']([^"']+)["']/g;
@@ -26,6 +26,7 @@ export class EmbedDiagnosticsProvider {
 
         const text = document.getText();
         const diagnostics: vscode.Diagnostic[] = [];
+        const fenceRanges = getCodeFenceRanges(text);
         const regex = new RegExp(EMBED_REGEX.source, 'g');
         let match;
 
@@ -43,6 +44,16 @@ export class EmbedDiagnosticsProvider {
             }
 
             if (!attrs['file']) {
+                continue;
+            }
+
+            // Skip tags inside fenced code blocks
+            if (isInCodeFence(match.index, fenceRanges)) {
+                continue;
+            }
+
+            // URL embeds: skip local-file validation
+            if (isUrl(attrs['file'])) {
                 continue;
             }
 

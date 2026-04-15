@@ -8,12 +8,50 @@ import { EmbedHoverProvider } from './hover';
 import { EmbedCompletionProvider } from './completion';
 import { resolveFilePath } from './utils';
 
+const REGION_START_REGEX = /^\s*(?:\/\/|--|#|<!--|\/\*)\s*#region\s+(\S+)\s*(?:-->|\*\/)?$/;
+const REGION_END_REGEX   = /^\s*(?:\/\/|--|#|<!--|\/\*)\s*#endregion\s*(?:-->|\*\/)?/;
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Markdown Code Embedder is now active!');
 
     const embedder = new MarkdownEmbedder();
     const diagnosticsProvider = new EmbedDiagnosticsProvider();
     const codeLensProvider = new EmbedCodeLensProvider();
+
+    // ── Stale tracking ─────────────────────────────────────────────────────
+    async function updateStaleMap(document: vscode.TextDocument): Promise<void> {
+        if (document.languageId !== 'markdown') { return; }
+        try {
+            const indices = await embedder.getStaleMatchIndices(document);
+            codeLensProvider.updateStaleIndices(document.uri.toString(), indices);
+            codeLensProvider.refresh();
+        } catch { /* ignore */ }
+    }
+
+    // ── Helper: update all markdown files in workspace ─────────────────────
+    async function updateAllMarkdownFiles(): Promise<number> {
+        const mdFiles = await vscode.workspace.findFiles('**/*.md', '**/node_modules/**');
+        let totalEdits = 0;
+        for (const mdFileUri of mdFiles) {
+            try {
+                const doc = await vscode.workspace.openTextDocument(mdFileUri);
+                const edits = await embedder.generateEdits(doc);
+                if (edits.length > 0) {
+                    edits.sort((a, b) => b.range.start.compareTo(a.range.start));
+                    const workspaceEdit = new vscode.WorkspaceEdit();
+                    workspaceEdit.set(mdFileUri, edits);
+                    const applied = await vscode.workspace.applyEdit(workspaceEdit);
+                    if (applied) {
+                        await doc.save();
+                        totalEdits += edits.length;
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to update embeds in ${mdFileUri.fsPath}:`, error);
+            }
+        }
+        return totalEdits;
+    }
 
     // ── Update all embeds in active document ───────────────────────────────
     const updateAllCommand = vscode.commands.registerCommand('markdown-embed.update', async () => {
@@ -39,6 +77,93 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showInformationMessage(`Updated ${edits.length} embeds.`);
             } else {
                 vscode.window.showInformationMessage('No embeds found to update.');
+            }
+        });
+    });
+
+    // ── Update all embeds across workspace ─────────────────────────────────
+    const updateWorkspaceCommand = vscode.commands.registerCommand('markdown-embed.updateWorkspace', async () => {
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Updating Code Embeds in Workspace...',
+            cancellable: false
+        }, async () => {
+            const totalEdits = await updateAllMarkdownFiles();
+            if (totalEdits > 0) {
+                vscode.window.showInformationMessage(`Workspace update complete: ${totalEdits} embed(s) refreshed.`);
+            } else {
+                vscode.window.showInformationMessage('No stale embeds found in workspace.');
+            }
+        });
+    });
+
+    // ── Insert embed tag (copy to clipboard, for non-markdown source files) ─
+    const insertEmbedTagCommand = vscode.commands.registerCommand('markdown-embed.insertEmbedTag', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('No active editor found.');
+            return;
+        }
+        if (editor.document.languageId === 'markdown') {
+            vscode.window.showErrorMessage('Run this command from a source file (not a Markdown file).');
+            return;
+        }
+
+        const document = editor.document;
+        const selection = editor.selection;
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+
+        // Compute file path relative to workspace root (or absolute fallback)
+        let filePath: string;
+        if (workspaceFolder) {
+            filePath = path.relative(workspaceFolder.uri.fsPath, document.uri.fsPath).split(path.sep).join('/');
+        } else {
+            filePath = document.uri.fsPath;
+        }
+
+        const lines = document.getText().split(/\r?\n/);
+        const startLine = selection.start.line;
+        const endLine = selection.end.line;
+
+        // Detect region: check if the selection is inside or spans a #region block
+        let regionName: string | undefined;
+
+        // Check if any line in the selection starts a #region
+        for (let i = startLine; i <= endLine; i++) {
+            const m = REGION_START_REGEX.exec(lines[i]);
+            if (m) {
+                regionName = m[1];
+                break;
+            }
+        }
+
+        // If not found in selection, search backwards from startLine
+        if (!regionName) {
+            for (let i = startLine; i >= 0; i--) {
+                if (REGION_END_REGEX.test(lines[i])) { break; }
+                const m = REGION_START_REGEX.exec(lines[i]);
+                if (m) {
+                    regionName = m[1];
+                    break;
+                }
+            }
+        }
+
+        let tag: string;
+        if (regionName) {
+            tag = `<!-- embed:file="${filePath}" region="${regionName}" -->`;
+        } else if (!selection.isEmpty) {
+            const lineStart = startLine + 1;
+            const lineEnd = endLine + 1;
+            tag = `<!-- embed:file="${filePath}" line="${lineStart}-${lineEnd}" -->`;
+        } else {
+            tag = `<!-- embed:file="${filePath}" -->`;
+        }
+
+        await vscode.env.clipboard.writeText(tag);
+        vscode.window.showInformationMessage(`Embed tag copied to clipboard!`, 'Show').then(action => {
+            if (action === 'Show') {
+                vscode.window.showInformationMessage(tag);
             }
         });
     });
@@ -106,7 +231,6 @@ export function activate(context: vscode.ExtensionContext) {
             const end = document.positionAt(matchIndex + fullMatch.length);
             const range = new vscode.Range(start, end);
 
-            // Insert lock="true" before closing -->
             const newMatch = fullMatch.replace(/\s*-->$/, ' lock="true" -->');
             await editor.edit(eb => eb.replace(range, newMatch));
             codeLensProvider.refresh();
@@ -152,30 +276,12 @@ export function activate(context: vscode.ExtensionContext) {
         if (!config.get<boolean>('autoUpdate')) {
             return;
         }
-        const mdFiles = await vscode.workspace.findFiles('**/*.md', '**/node_modules/**');
-        for (const mdFileUri of mdFiles) {
-            try {
-                const doc = await vscode.workspace.openTextDocument(mdFileUri);
-                const edits = await embedder.generateEdits(doc);
-                if (edits.length > 0) {
-                    edits.sort((a, b) => b.range.start.compareTo(a.range.start));
-                    const workspaceEdit = new vscode.WorkspaceEdit();
-                    workspaceEdit.set(mdFileUri, edits);
-                    const applied = await vscode.workspace.applyEdit(workspaceEdit);
-                    if (applied) {
-                        await doc.save();
-                    }
-                }
-            } catch (error) {
-                console.error(`Failed to update embeds in ${mdFileUri.fsPath}:`, error);
-            }
-        }
+        await updateAllMarkdownFiles();
     });
 
     // ── Diagnostics: update on open, change, save ─────────────────────────
     const onDidOpen = vscode.workspace.onDidOpenTextDocument(async doc => {
         diagnosticsProvider.updateDiagnostics(doc);
-        // Clean up legacy error comments on open
         if (doc.languageId === 'markdown') {
             const cleanupEdits = embedder.cleanLegacyErrorComments(doc);
             if (cleanupEdits.length > 0) {
@@ -183,6 +289,7 @@ export function activate(context: vscode.ExtensionContext) {
                 we.set(doc.uri, cleanupEdits);
                 await vscode.workspace.applyEdit(we);
             }
+            updateStaleMap(doc);
         }
     });
 
@@ -192,13 +299,16 @@ export function activate(context: vscode.ExtensionContext) {
 
     const onDidSaveDiag = vscode.workspace.onDidSaveTextDocument(doc => {
         diagnosticsProvider.updateDiagnostics(doc);
+        if (doc.languageId === 'markdown') {
+            updateStaleMap(doc);
+        }
     });
 
     const onDidClose = vscode.workspace.onDidCloseTextDocument(doc => {
         diagnosticsProvider.clearDiagnostics(doc);
     });
 
-    // Run diagnostics + cleanup on already-open documents
+    // Run diagnostics + cleanup + stale check on already-open documents
     vscode.workspace.textDocuments.forEach(async doc => {
         diagnosticsProvider.updateDiagnostics(doc);
         if (doc.languageId === 'markdown') {
@@ -208,6 +318,7 @@ export function activate(context: vscode.ExtensionContext) {
                 we.set(doc.uri, cleanupEdits);
                 await vscode.workspace.applyEdit(we);
             }
+            updateStaleMap(doc);
         }
     });
 
@@ -230,11 +341,13 @@ export function activate(context: vscode.ExtensionContext) {
     const completionDisposable = vscode.languages.registerCompletionItemProvider(
         'markdown',
         new EmbedCompletionProvider(),
-        '"', "'", '/'   // trigger characters
+        '"', "'", '/'
     );
 
     context.subscriptions.push(
         updateAllCommand,
+        updateWorkspaceCommand,
+        insertEmbedTagCommand,
         updateSingleCommand,
         goToSourceCommand,
         lockCommand,

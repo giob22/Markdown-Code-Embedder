@@ -6,13 +6,13 @@
 
 <p align="center">
     <a href="https://marketplace.visualstudio.com/items?itemName=giob22.markdown-code-embedder">
-        <img src="https://img.shields.io/visual-studio-marketplace/v/giob22.markdown-code-embedder?style=flat-square" alt="Version" />
+        <img src="https://vsmarketplacebadges.dev/version-short/giob22.markdown-code-embedder.svg?style=flat-square" alt="Version" />
     </a>
     <a href="https://marketplace.visualstudio.com/items?itemName=giob22.markdown-code-embedder">
-        <img src="https://img.shields.io/visual-studio-marketplace/i/giob22.markdown-code-embedder?style=flat-square" alt="Installs" />
+        <img src="https://vsmarketplacebadges.dev/installs/giob22.markdown-code-embedder.svg?style=flat-square" alt="Installs" />
     </a>
     <a href="https://marketplace.visualstudio.com/items?itemName=giob22.markdown-code-embedder">
-        <img src="https://img.shields.io/visual-studio-marketplace/r/giob22.markdown-code-embedder?style=flat-square" alt="Rating" />
+        <img src="https://vsmarketplacebadges.dev/rating/giob22.markdown-code-embedder.svg?style=flat-square" alt="Rating" />
     </a>
     <br />
     <a href="LICENSE">
@@ -60,6 +60,12 @@ When your code changes, your documentation updates automatically. It's like magi
 - **CodeLens**: Inline action buttons above every embed — update, navigate, lock/unlock without touching the tag.
 - **Hover Preview**: Hover over an embed tag to preview the code without opening the source file.
 - **Autocomplete**: IntelliSense for file paths and region names while writing embed tags.
+- **Remote Embeds**: Embed code directly from any HTTP/HTTPS URL (e.g. GitHub raw links).
+- **Copy Embed Tag**: Right-click any source file selection to generate an embed tag and copy it to the clipboard.
+- **Update Workspace**: One command refreshes every embed in every Markdown file in the workspace.
+- **Stale Detection**: `⚠ Stale` CodeLens badge appears whenever the source has changed but the embed hasn't been updated yet.
+- **Indent**: `indent="N"` shifts the entire generated block (link + code fence) by N spaces — useful inside lists or admonitions.
+- **Strip Comments**: Region marker lines (`#region`/`#endregion`) are hidden by default. Set `strip-comments="false"` to keep them visible.
 
 ---
 
@@ -143,6 +149,39 @@ Enable `markdownEmbedder.autoUpdate` to have your markdown files automatically u
 Run the command `Markdown Embedder: Update Code Embeds` or simply save the markdown file.
 
 ![Manual Update](media/ModificaCodice_salvataggio_ModificaReadMe.gif)
+
+### 9. Update All Embeds in Workspace
+Run `Markdown Embedder: Update All Embeds in Workspace` to refresh every embed across all Markdown files in the project at once.
+
+### 10. Embed from a Remote URL
+Reference any public HTTP/HTTPS URL. Supports region and line range attributes as usual.
+
+```markdown
+<!-- embed:file="https://raw.githubusercontent.com/user/repo/main/src/main.ts" region="my-feature" -->
+```
+
+### 11. Copy Embed Tag from Source
+Right-click any selection (or cursor position) inside a source file and choose **Copy Embed Tag**. The tag is copied to the clipboard, ready to paste into your Markdown document.
+- If the cursor is inside a `#region` block, the tag uses `region="name"`.
+- If lines are selected, the tag uses `line="start-end"`.
+
+### 12. Indent Embedded Block
+Use `indent="N"` to prefix every output line (link + code fence) with N spaces. Useful when embedding inside Markdown lists.
+
+```markdown
+- Here is an example:
+
+<!-- embed:file="./src/main.ts" region="example" indent="2" -->
+```
+
+### 13. Strip Region Marker Comments
+Region marker lines (`// #region` / `// #endregion`) are **hidden by default** — they never appear in the embedded output. To include them, set `strip-comments="false"`.
+
+```markdown
+<!-- embed:file="./src/main.ts" region="my-feature" strip-comments="false" -->
+```
+
+This also applies to full-file and line-range embeds: any `#region`/`#endregion` lines within the selected range are stripped unless `strip-comments="false"` is set.
 
 ---
 

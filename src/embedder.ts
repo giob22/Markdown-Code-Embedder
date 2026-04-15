@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getLanguageId, resolveFilePath, getCommentPrefix } from './utils';
+import { getLanguageId, resolveFilePath, getCommentPrefix, isUrl, fetchUrl, getCodeFenceRanges, isInCodeFence } from './utils';
 
 interface EmbedContent {
     content: string;
@@ -10,26 +10,21 @@ interface EmbedContent {
     endLine?: number;
 }
 
+const REGION_MARKER_REGEX = /^\s*(?:\/\/|--|#|<!--|\/\*)\s*#(?:region|endregion)\b.*(?:-->|\*\/)?$/;
+
 export class MarkdownEmbedder {
     private readonly embedRegex = /<!--\s*embed:([^\s]+)(.*?)-->/g;
     private readonly endEmbedRegex = /<!--\s*embed:end\s*-->/;
 
     public async generateEditsForIndex(document: vscode.TextDocument, targetIndex: number): Promise<vscode.TextEdit[]> {
-        const text = document.getText();
-        const regex = new RegExp(this.embedRegex.source, 'g');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            if (match.index === targetIndex) {
-                return this.generateEdits(document, targetIndex);
-            }
-        }
-        return [];
+        return this.generateEdits(document, targetIndex);
     }
 
     public async generateEdits(document: vscode.TextDocument, onlyIndex?: number): Promise<vscode.TextEdit[]> {
         const text = document.getText();
         const edits: vscode.TextEdit[] = [];
         const promises: Promise<void>[] = [];
+        const fenceRanges = getCodeFenceRanges(text);
 
         let match;
         const regex = new RegExp(this.embedRegex);
@@ -42,12 +37,14 @@ export class MarkdownEmbedder {
             const matchIndex = match.index;
             const matchLen = fullMatch.length;
 
-            // If targeting a specific embed, skip all others
             if (onlyIndex !== undefined && matchIndex !== onlyIndex) {
                 continue;
             }
 
-            // Combine attributes for parsing
+            if (isInCodeFence(matchIndex, fenceRanges)) {
+                continue;
+            }
+
             const attributeString = primaryKey + remainingAttributes;
             const attributes = this.parseAttributes(attributeString);
 
@@ -55,7 +52,6 @@ export class MarkdownEmbedder {
                 continue;
             }
 
-            // If lock="true", skip updating this embed
             if (attributes['lock'] === 'true') {
                 continue;
             }
@@ -65,11 +61,9 @@ export class MarkdownEmbedder {
 
             let replaceRange: vscode.Range;
 
-            // Find the closing tag
             const nextStartRegex = new RegExp(this.embedRegex.source);
             let nextStartMatch = nextStartRegex.exec(remainingText);
 
-            // Ignore if the start tag is actually an end tag
             if (nextStartMatch && this.endEmbedRegex.test(nextStartMatch[0])) {
                 nextStartMatch = null;
             }
@@ -77,7 +71,6 @@ export class MarkdownEmbedder {
             if (closeMatch && text.indexOf(closeMatch[0], matchIndex + matchLen) !== -1 &&
                 (!nextStartMatch || closeMatch.index < nextStartMatch.index)) {
 
-                // Determine if there is content between start and end that looks like a code block we manage
                 const closeIndex = matchIndex + matchLen + closeMatch.index;
                 const closeEndIndex = closeIndex + closeMatch[0].length;
                 replaceRange = new vscode.Range(
@@ -91,34 +84,20 @@ export class MarkdownEmbedder {
                 );
             }
 
+            const capturedAttributes = { ...attributes };
+            const capturedRange = replaceRange;
+
             promises.push((async () => {
                 try {
-                    const embedResult = await this.resolveContent(document, attributes);
-                    const lang = getLanguageId(attributes['file']);
+                    const newContent = await this.buildNewContent(document, capturedAttributes);
+                    if (newContent === null) { return; }
 
-                    // Calculate relative path for the link
-                    const markdownDir = path.dirname(document.uri.fsPath);
-                    let relativePath = path.relative(markdownDir, embedResult.resolvedPath);
-                    // Ensure relative path uses forward slashes for Markdown compatibility
-                    relativePath = relativePath.split(path.sep).join('/');
-
-                    let linkSuffix = '';
-                    if (embedResult.startLine !== undefined && embedResult.endLine !== undefined) {
-                        linkSuffix = `#L${embedResult.startLine}-L${embedResult.endLine}`;
-                    }
-
-                    const linkText = `[Source: ${attributes['file']}](${relativePath}${linkSuffix})`;
-
-                    const newContent = `\n${linkText}\n\`\`\`${lang}\n${embedResult.content}\n\`\`\`\n<!-- embed:end -->`;
-
-                    const currentContent = document.getText(replaceRange);
+                    const currentContent = document.getText(capturedRange);
                     if (currentContent !== newContent) {
-                        edits.push(vscode.TextEdit.replace(replaceRange, newContent));
+                        edits.push(vscode.TextEdit.replace(capturedRange, newContent));
                     }
                 } catch (error: any) {
-                    // Do not write errors into the document — diagnostics provider
-                    // surfaces them as squiggly lines + Problems panel entries.
-                    console.error(`Error embedding ${attributes['file']}: ${error.message}`);
+                    console.error(`Error embedding ${capturedAttributes['file']}: ${error.message}`);
                 }
             })());
         }
@@ -128,8 +107,112 @@ export class MarkdownEmbedder {
     }
 
     /**
+     * Returns match indices of embeds whose current document content differs from source.
+     * Used for stale detection in CodeLens.
+     */
+    public async getStaleMatchIndices(document: vscode.TextDocument): Promise<Set<number>> {
+        const text = document.getText();
+        const staleSet = new Set<number>();
+        const promises: Promise<void>[] = [];
+        const fenceRanges = getCodeFenceRanges(text);
+
+        let match;
+        const regex = new RegExp(this.embedRegex);
+
+        while ((match = regex.exec(text)) !== null) {
+            const fullMatch = match[0];
+            const primaryKey = match[1];
+            const remainingAttributes = match[2];
+            const matchIndex = match.index;
+            const matchLen = fullMatch.length;
+            const attributeString = primaryKey + remainingAttributes;
+            const attributes = this.parseAttributes(attributeString);
+
+            if (isInCodeFence(matchIndex, fenceRanges)) { continue; }
+            if (!attributes['file'] || attributes['lock'] === 'true') { continue; }
+
+            const remainingText = text.substring(matchIndex + matchLen);
+            const closeMatch = this.endEmbedRegex.exec(remainingText);
+
+            if (!closeMatch) {
+                // No embed:end → never embedded → stale
+                staleSet.add(matchIndex);
+                continue;
+            }
+
+            const closeIndex = matchIndex + matchLen + closeMatch.index;
+            const closeEndIndex = closeIndex + closeMatch[0].length;
+            const replaceRange = new vscode.Range(
+                document.positionAt(matchIndex + matchLen),
+                document.positionAt(closeEndIndex)
+            );
+            const currentContent = document.getText(replaceRange);
+
+            const capturedIndex = matchIndex;
+            const capturedAttrs = { ...attributes };
+            const capturedCurrentContent = currentContent;
+
+            promises.push((async () => {
+                try {
+                    const expectedContent = await this.buildNewContent(document, capturedAttrs);
+                    if (expectedContent !== null && capturedCurrentContent !== expectedContent) {
+                        staleSet.add(capturedIndex);
+                    }
+                } catch {
+                    // Content resolution error — diagnostics will show it, not stale
+                }
+            })());
+        }
+
+        await Promise.all(promises);
+        return staleSet;
+    }
+
+    /**
+     * Builds the full replacement string for an embed (link + fenced code + end tag).
+     * Returns null on error.
+     */
+    private async buildNewContent(
+        document: vscode.TextDocument,
+        attributes: { [key: string]: string }
+    ): Promise<string | null> {
+        try {
+            const embedResult = await this.resolveContent(document, attributes);
+            const lang = getLanguageId(attributes['file']);
+
+            let linkText: string;
+            if (isUrl(attributes['file'])) {
+                linkText = `[Source: ${attributes['file']}](${attributes['file']})`;
+            } else {
+                const markdownDir = path.dirname(document.uri.fsPath);
+                let relativePath = path.relative(markdownDir, embedResult.resolvedPath);
+                relativePath = relativePath.split(path.sep).join('/');
+                let linkSuffix = '';
+                if (embedResult.startLine !== undefined && embedResult.endLine !== undefined) {
+                    linkSuffix = `#L${embedResult.startLine}-L${embedResult.endLine}`;
+                }
+                linkText = `[Source: ${attributes['file']}](${relativePath}${linkSuffix})`;
+            }
+
+            let newContent = `\n${linkText}\n\`\`\`${lang}\n${embedResult.content}\n\`\`\`\n<!-- embed:end -->`;
+
+            if (attributes['indent']) {
+                const spaces = parseInt(attributes['indent'], 10);
+                if (!isNaN(spaces) && spaces > 0) {
+                    const prefix = ' '.repeat(spaces);
+                    newContent = newContent.split('\n').map((line, i) => i === 0 ? line : prefix + line).join('\n');
+                }
+            }
+
+            return newContent;
+        } catch (error: any) {
+            console.error(`Error building embed content for ${attributes['file']}: ${error.message}`);
+            return null;
+        }
+    }
+
+    /**
      * Removes any legacy `<!-- Error embedding ... -->` comments written by older versions.
-     * Returns TextEdits that delete them so the document stays clean.
      */
     public cleanLegacyErrorComments(document: vscode.TextDocument): vscode.TextEdit[] {
         const text = document.getText();
@@ -146,7 +229,6 @@ export class MarkdownEmbedder {
 
     private parseAttributes(str: string): { [key: string]: string } {
         const attrs: { [key: string]: string } = {};
-        // Match key="value" or key='value'
         const attrRegex = /([a-zA-Z0-9-_]+)=["']([^"']+)["']/g;
         let match;
         while ((match = attrRegex.exec(str)) !== null) {
@@ -156,8 +238,17 @@ export class MarkdownEmbedder {
     }
 
     private async resolveContent(document: vscode.TextDocument, attrs: { [key: string]: string }): Promise<EmbedContent> {
-        const filePath = await resolveFilePath(document, attrs['file']);
-        const fileContent = await fs.promises.readFile(filePath, 'utf-8');
+        let fileContent: string;
+        let resolvedPath: string;
+
+        if (isUrl(attrs['file'])) {
+            fileContent = await fetchUrl(attrs['file']);
+            resolvedPath = attrs['file'];
+        } else {
+            resolvedPath = await resolveFilePath(document, attrs['file']);
+            fileContent = await fs.promises.readFile(resolvedPath, 'utf-8');
+        }
+
         const lines = fileContent.split(/\r?\n/);
 
         let content = fileContent;
@@ -173,13 +264,21 @@ export class MarkdownEmbedder {
             startLine = start;
             endLine = end;
         } else if (attrs['region']) {
-            const regionData = this.extractRegion(lines, attrs['region']);
+            const includeMarkers = attrs['strip-comments'] === 'false';
+            const regionData = this.extractRegion(lines, attrs['region'], includeMarkers);
             content = regionData.content;
             startLine = regionData.startLine;
             endLine = regionData.endLine;
         }
 
-        // Strip indentation first to ensure alignment is correct relative to visual content
+        // For full-file / line-range embeds: strip any #region/#endregion lines unless disabled
+        if (!attrs['region'] && attrs['strip-comments'] !== 'false') {
+            content = content.split(/\r?\n/)
+                .filter(line => !REGION_MARKER_REGEX.test(line))
+                .join('\n');
+        }
+
+        // Strip common indentation
         content = this.stripIndentation(content);
 
         // Handle 'new' attribute for line highlighting
@@ -201,12 +300,11 @@ export class MarkdownEmbedder {
                 }
             });
 
-            const langId = getLanguageId(filePath);
+            const langId = getLanguageId(resolvedPath);
             const [commentPrefix, commentSuffix] = getCommentPrefix(langId);
 
             const linesToProcess = content.split(/\r?\n/);
 
-            // Calculate max line length for alignment
             let maxLineLength = 0;
             linesToProcess.forEach(line => {
                 if (line.length > maxLineLength) {
@@ -217,9 +315,6 @@ export class MarkdownEmbedder {
             const processedLines = linesToProcess.map((line, index) => {
                 const originalLineNumber = (startLine || 1) + index;
                 if (newLines.has(originalLineNumber)) {
-                    // Calculate padding needed to align comments
-                    // We add a minimal padding of 1 space if line equals max length
-                    // Alignment position = maxLineLength + 1
                     const padding = ' '.repeat(maxLineLength - line.length + 1);
                     const suffix = `${padding}${commentPrefix} NEW${commentSuffix}`;
                     return line + suffix;
@@ -245,37 +340,37 @@ export class MarkdownEmbedder {
 
         return {
             content,
-            resolvedPath: filePath,
+            resolvedPath,
             startLine,
             endLine
         };
     }
 
-    private extractRegion(lines: string[], regionName: string): { content: string, startLine: number, endLine: number } {
+    private extractRegion(lines: string[], regionName: string, includeMarkers = false): { content: string, startLine: number, endLine: number } {
         const regionStartRegex = new RegExp(`^\\s*(?:\\/\\/|--|#|<!--|\\/\\*)\\s*#region\\s+${regionName}\\s*(?:-->|\\*\\/)?$`);
         const regionEndRegex = new RegExp(`^\\s*(?:\\/\\/|--|#|<!--|\\/\\*)\\s*#endregion\\s*(?:-->|\\*\\/)?`);
 
-        // Also support just #endregion without name or strict matching if preferred, but strict is safer for named regions
-
-        let startLine = -1;
-        let endLine = -1;
+        let startIdx = -1; // 0-based index of the #region line
+        let endIdx = -1;   // 0-based index of the #endregion line
 
         for (let i = 0; i < lines.length; i++) {
             if (regionStartRegex.test(lines[i])) {
-                startLine = i + 1; // Content starts after this line
+                startIdx = i;
                 continue;
             }
-            if (startLine !== -1 && regionEndRegex.test(lines[i])) {
-                endLine = i; // Content ends before this line
+            if (startIdx !== -1 && regionEndRegex.test(lines[i])) {
+                endIdx = i;
                 break;
             }
         }
 
-        if (startLine !== -1 && endLine !== -1) {
+        if (startIdx !== -1 && endIdx !== -1) {
+            const sliceFrom = includeMarkers ? startIdx     : startIdx + 1;
+            const sliceTo   = includeMarkers ? endIdx + 1   : endIdx;
             return {
-                content: lines.slice(startLine, endLine).join('\n'),
-                startLine: startLine + 1, // 1-based start line (inclusive)
-                endLine: endLine // 1-based end line (inclusive)
+                content: lines.slice(sliceFrom, sliceTo).join('\n'),
+                startLine: startIdx + 2, // 1-based, first content line
+                endLine: endIdx          // 1-based, last content line
             };
         }
 
@@ -287,7 +382,7 @@ export class MarkdownEmbedder {
 
         let minIndent = Infinity;
         for (const line of lines) {
-            if (line.trim().length === 0) continue;
+            if (line.trim().length === 0) { continue; }
             const match = line.match(/^(\s*)/);
             if (match) {
                 minIndent = Math.min(minIndent, match[1].length);
@@ -299,7 +394,7 @@ export class MarkdownEmbedder {
         }
 
         return lines.map(line => {
-            if (line.length < minIndent) return '';
+            if (line.length < minIndent) { return ''; }
             return line.substring(minIndent);
         }).join('\n');
     }

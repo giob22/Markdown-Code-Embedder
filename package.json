@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/giob22/Markdown-Code-Embedder.git"
   },
-  "version": "0.1.6",
+  "version": "0.1.7",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -35,7 +35,9 @@
   "activationEvents": [
     "workspaceContains:**/*.md",
     "onLanguage:markdown",
-    "onCommand:markdown-embed.update"
+    "onCommand:markdown-embed.update",
+    "onCommand:markdown-embed.updateWorkspace",
+    "onCommand:markdown-embed.insertEmbedTag"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -59,8 +61,25 @@
       {
         "command": "markdown-embed.unlock",
         "title": "Unlock Code Embed"
+      },
+      {
+        "command": "markdown-embed.updateWorkspace",
+        "title": "Update All Embeds in Workspace"
+      },
+      {
+        "command": "markdown-embed.insertEmbedTag",
+        "title": "Copy Embed Tag"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "markdown-embed.insertEmbedTag",
+          "when": "editorTextFocus && resourceLangId != markdown",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Markdown Embedder",
       "properties": {
